@@ -1,6 +1,6 @@
 # ElixirInAction
 
-**TODO: Add description**
+Code along with Elixir in Action book.
 
 ## Installation
 
