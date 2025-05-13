@@ -17,20 +17,37 @@ defmodule Calculator do
   def div(server_pid, value), do: send(server_pid, {:div, value})
 
   defp loop(current_value) do
-    new_value = receive do
-      {:value, caller} ->
-        send(caller, {:response, current_value})
-        current_value
-      {:add, value} -> current_value + value
-      {:sub, value} -> current_value - value
-      {:mul, value} -> current_value * value
-      {:div, value} -> current_value / value
-
-      invalid_request ->
-        IO.puts("invalid request #{inspect invalid_request}")
-        current_value
-    end
+    new_value =
+      receive do
+        message -> process_message(current_value, message)
+      end
 
     loop(new_value)
+  end
+
+  defp process_message(current_value, {:value, caller}) do
+    send(caller, {:response, current_value})
+    current_value
+  end
+
+  defp process_message(current_value, {:add, value}) do
+    current_value + value
+  end
+
+  defp process_message(current_value, {:sub, value}) do
+    current_value - value
+  end
+
+  defp process_message(current_value, {:mul, value}) do
+    current_value * value
+  end
+
+  defp process_message(current_value, {:div, value}) do
+    current_value / value
+  end
+
+  defp process_message(current_value, invalid_request) do
+    IO.puts("invalid request #{inspect invalid_request}")
+    current_value
   end
 end
