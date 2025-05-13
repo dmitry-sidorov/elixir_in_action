@@ -1,4 +1,4 @@
-defmodule DatabaseServer do
+defmodule ChapterFive.DatabaseServer do
   def start do
     spawn(fn ->
       connection = :rand.uniform(1000)

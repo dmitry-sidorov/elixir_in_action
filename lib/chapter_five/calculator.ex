@@ -1,4 +1,4 @@
-defmodule Calculator do
+defmodule ChapterFive.Calculator do
   def start() do
     spawn(fn -> loop(0) end)
   end
