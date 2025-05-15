@@ -66,6 +66,10 @@ defmodule ChapterFive.TodoServer do
     end
   end
 
+  def delete_entry(todo_server, entry_id) do
+    send(todo_server, {:delete_entry, entry_id})
+  end
+
   def add_entry(todo_server, new_entry) do
     send(todo_server, {:add_entry, new_entry})
   end
@@ -81,6 +85,10 @@ defmodule ChapterFive.TodoServer do
       end
 
     loop(new_todo_list)
+  end
+
+  defp process_message(todo_list, {:delete_entry, entry_id}) do
+    ChapterFive.TodoList.delete_entry(todo_list, entry_id)
   end
 
   defp process_message(todo_list, {:add_entry, new_entry}) do
