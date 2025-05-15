@@ -4,7 +4,7 @@ defmodule ChapterFive.TodoList do
   def new(entries \\ []) do
     Enum.reduce(
       entries,
-      %TodoList{},
+      %ChapterFive.TodoList{},
       &add_entry(&2, &1)
     )
   end
@@ -13,7 +13,7 @@ defmodule ChapterFive.TodoList do
     entry = Map.put(entry, :id, todo_list.next_id)
     new_entries = Map.put(todo_list.entries, todo_list.next_id, entry)
 
-    %TodoList{todo_list | entries: new_entries, next_id: todo_list.next_id + 1}
+    %ChapterFive.TodoList{todo_list | entries: new_entries, next_id: todo_list.next_id + 1}
   end
 
   def entries(todo_list, date) do
@@ -28,20 +28,50 @@ defmodule ChapterFive.TodoList do
         todo_list
 
       {:ok, old_entry} ->
-        new_entry = updater_fun.(old_entry)
+        new_entry = updater_fun.(old_entry) |> IO.inspect()
         new_entries = Map.put(todo_list.entries, new_entry.id, new_entry)
-        %TodoList{todo_list | entries: new_entries}
+        %ChapterFive.TodoList{todo_list | entries: new_entries}
     end
   end
 
   def delete_entry(todo_list, entry_id) do
-    %TodoList{todo_list | entries: Map.delete(todo_list.entries, entry_id)}
+    %ChapterFive.TodoList{todo_list | entries: Map.delete(todo_list.entries, entry_id)}
   end
 end
 
 defmodule ChapterFive.TodoServer do
   def start do
-    spawn(fn -> loop(TodoList.new()) end)
+    spawn(fn -> loop(ChapterFive.TodoList.new()) end)
+  end
+
+  def get_mock_data do
+    ~D[2018-12-19]
+  end
+
+  def populate_entries(todo_server) do
+    [
+      %{date: get_mock_data(), title: "Dentist"},
+      %{date: get_mock_data(), title: "Movies"},
+      %{date: get_mock_data(), title: "Shopping"},
+    ] |> Enum.each(fn new_entry -> send(todo_server, {:add_entry, new_entry}) end)
+  end
+
+  def entries(todo_server, date) do
+    send(todo_server, {:entries, self(), date})
+
+    receive do
+      {:todo_entries, entries} -> entries
+    after
+      5000 -> {:error, :timeout}
+    end
+  end
+
+  def add_entry(todo_server, new_entry) do
+    send(todo_server, {:add_entry, new_entry})
+  end
+
+  def update_entry(todo_server, entry_id, updater_fn) do
+    send(todo_server, {:update_entry, entry_id, updater_fn})
   end
 
   defp loop(todo_list) do
@@ -51,5 +81,18 @@ defmodule ChapterFive.TodoServer do
       end
 
     loop(new_todo_list)
+  end
+
+  defp process_message(todo_list, {:add_entry, new_entry}) do
+    ChapterFive.TodoList.add_entry(todo_list, new_entry)
+  end
+
+  defp process_message(todo_list, {:update_entry, entry_id, updater_fn}) do
+    ChapterFive.TodoList.update_entry(todo_list, entry_id, updater_fn)
+  end
+
+  defp process_message(todo_list, {:entries, caller, date}) do
+    send(caller, {:todo_entries, ChapterFive.TodoList.entries(todo_list, date)})
+    todo_list
   end
 end
