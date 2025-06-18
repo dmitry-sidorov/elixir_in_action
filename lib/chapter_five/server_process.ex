@@ -15,8 +15,21 @@ defmodule ChapterFive.ServerProcess do
 
   end
 
+  def info(server_pid) do
+    send(server_pid, {:info, self()})
+
+    receive do
+      {:response, response} -> response
+    end
+
+  end
+
   defp loop(callback_module, current_state) do
     receive do
+      {:info, caller} ->
+        send(caller, {:response, current_state})
+
+        loop(callback_module, current_state)
       {request, caller} ->
         {response, new_state} = callback_module.handle_call(request, current_state)
 
