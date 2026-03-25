@@ -19,7 +19,7 @@ defmodule ChapterTen.EtsKeyValue do
 
   def get(key) do
     case :ets.lookup(__MODULE__, key) do
-      [^key, value] -> value
+      [{^key, value}] -> value
       [] -> nil
     end
   end
