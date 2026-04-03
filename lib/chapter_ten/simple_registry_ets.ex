@@ -5,9 +5,9 @@ defmodule ChapterTen.SimpleRegistryEts do
   @impl true
   def init(_) do
     Process.flag(:trap_exit, true)
-    storage_ref = :ets.new(:storage, [:public])
+    :ets.new(@self, [:public, :named_table, read_concurrency: true, write_concurrency: true])
 
-    {:ok, storage_ref}
+    {:ok, nil}
   end
 
   def start_link do
@@ -15,44 +15,30 @@ defmodule ChapterTen.SimpleRegistryEts do
   end
 
   def register(name) do
-    GenServer.call(@self, {:register, name, self()})
-  end
+    caller_pid = self()
 
-  def whereis(name) do
-    GenServer.call(@self, {:whereis, name})
-  end
-
-  @impl true
-  def handle_call({:register, name, pid}, _from, storage_ref) do
-    result = case :ets.insert_new(storage_ref, {name, pid}) do
+    case :ets.insert_new(@self, {name, caller_pid}) do
       true ->
-        Process.link(pid)
+        Process.link(caller_pid)
         :ok
       false ->
         :error
     end
-
-    {:reply, result, storage_ref}
   end
 
-  @impl true
-  def handle_call({:whereis, name}, _from, storage_ref) do
-    pid = case :ets.lookup(storage_ref, name) do
+  def whereis(name) do
+    case :ets.lookup(@self, name) do
       [{^name, pid}] -> pid
       [] -> nil
     end
-
-    {:reply, pid, storage_ref}
   end
+
+
 
   @impl true
-  def handle_info({:EXIT, pid, _reason}, storage_ref) do
-    {:noreply, unregister_process(storage_ref, pid)}
-  end
+  def handle_info({:EXIT, pid, _reason}, state) do
+    :ets.match_delete(@self, {:_, pid})
 
-  defp unregister_process(storage_ref, unregistered_pid) do
-    :ets.match_delete(storage_ref, {:_, unregistered_pid})
-
-    storage_ref
+    {:noreply, state}
   end
 end
