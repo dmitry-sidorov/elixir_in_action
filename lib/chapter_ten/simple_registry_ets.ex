@@ -5,7 +5,9 @@ defmodule ChapterTen.SimpleRegistryEts do
   @impl true
   def init(_) do
     Process.flag(:trap_exit, true)
-    {:ok, %{}}
+    storage_ref = :ets.new(:storage, [:public])
+
+    {:ok, storage_ref}
   end
 
   def start_link do
@@ -21,43 +23,36 @@ defmodule ChapterTen.SimpleRegistryEts do
   end
 
   @impl true
-  def handle_call({:register, name, pid}, _from, storage) do
-    result = case Map.fetch(storage, name) do
-      {:ok, _} -> :error
-      :error -> :ok
-    end
-
-    case result do
-      :ok ->
+  def handle_call({:register, name, pid}, _from, storage_ref) do
+    result = case :ets.insert_new(storage_ref, {name, pid}) do
+      true ->
         Process.link(pid)
-        {:reply, result, Map.put(storage, name, pid)}
-
-      :error ->
-        {:reply, result, storage}
+        :ok
+      false ->
+        :error
     end
+
+    {:reply, result, storage_ref}
   end
 
   @impl true
-  def handle_call({:whereis, name}, _from, storage) do
-    IO.inspect(storage, label: "storage")
-    pid = Map.get(storage, name)
+  def handle_call({:whereis, name}, _from, storage_ref) do
+    pid = case :ets.lookup(storage_ref, name) do
+      [{^name, pid}] -> pid
+      [] -> nil
+    end
 
-    {:reply, pid, storage}
+    {:reply, pid, storage_ref}
   end
 
   @impl true
-  def handle_info({:EXIT, pid, _reason}, storage) do
-    {:noreply, unregister_process(storage, pid)}
+  def handle_info({:EXIT, pid, _reason}, storage_ref) do
+    {:noreply, unregister_process(storage_ref, pid)}
   end
 
-  defp unregister_process(storage, unregistered_pid) do
-    IO.inspect(storage, label: "storage on unregister")
+  defp unregister_process(storage_ref, unregistered_pid) do
+    :ets.match_delete(storage_ref, {:_, unregistered_pid})
 
-    new_storage = storage
-    |> Enum.filter(fn {_key, process_pid} -> process_pid != unregistered_pid end)
-    |> Enum.into(%{})
-
-    IO.inspect(new_storage, label: "new_storage on unregister")
-    new_storage
+    storage_ref
   end
 end

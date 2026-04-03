@@ -51,13 +51,8 @@ defmodule ChapterTen.SimpleRegistry do
   end
 
   defp unregister_process(storage, unregistered_pid) do
-    IO.inspect(storage, label: "storage on unregister")
-
-    new_storage = storage
+    storage
     |> Enum.filter(fn {_key, process_pid} -> process_pid != unregistered_pid end)
     |> Enum.into(%{})
-
-    IO.inspect(new_storage, label: "new_storage on unregister")
-    new_storage
   end
 end
