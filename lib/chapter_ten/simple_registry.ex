@@ -1,4 +1,4 @@
-defmodule ChapterTen.SimpleRegiustry do
+defmodule ChapterTen.SimpleRegistry do
   use GenServer
   @self __MODULE__
 
@@ -12,8 +12,8 @@ defmodule ChapterTen.SimpleRegiustry do
     GenServer.start_link(@self, [], name: @self)
   end
 
-  def register(name, pid) do
-    GenServer.call(@self, {:register, name, pid})
+  def register(name) do
+    GenServer.call(@self, {:register, name, self()})
   end
 
   def whereis(name) do
@@ -39,6 +39,7 @@ defmodule ChapterTen.SimpleRegiustry do
 
   @impl true
   def handle_call({:whereis, name}, _from, storage) do
+    IO.inspect(storage, label: "storage")
     pid = Map.get(storage, name)
 
     {:reply, pid, storage}
