@@ -4,6 +4,7 @@ defmodule ChapterTen.SimpleRegiustry do
 
   @impl true
   def init(_) do
+    Process.flag(:trap_exit, true)
     {:ok, %{}}
   end
 
@@ -26,12 +27,14 @@ defmodule ChapterTen.SimpleRegiustry do
       :error -> :ok
     end
 
-    updated_storage = case result do
-      :ok -> Map.put(storage, name, pid)
-      :error -> storage
-    end
+    case result do
+      :ok ->
+        Process.link(pid)
+        {:reply, result, Map.put(storage, name, pid)}
 
-    {:reply, result, updated_storage}
+      :error ->
+        {:reply, result, storage}
+    end
   end
 
   @impl true
@@ -41,4 +44,13 @@ defmodule ChapterTen.SimpleRegiustry do
     {:reply, pid, storage}
   end
 
+  def handle_info({{:EXIT, pid, _reason}, storage}) do
+    {:noreply, unregister_process(storage, pid)}
+  end
+
+  defp unregister_process(storage, unregistered_pid) do
+    storage
+    |> Enum.filter(fn {_key, process_pid} -> process_pid != unregistered_pid end)
+    |> Enum.into(%{})
+  end
 end
